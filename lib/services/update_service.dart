@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:app_installer_plus/app_installer_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
   // ЗАМЕНИ 'YOUR_GITHUB_USERNAME' на свой логин GitHub, а 'autodiary' на имя репозитория
@@ -49,11 +50,15 @@ class UpdateService {
   }
 
   static bool _isNewerVersion(String latest, String current) {
-    final latestParts = latest
+    String clean(String v) {
+      return v.replaceAll(RegExp(r'[^0-9.]'), '').trim();
+    }
+
+    final latestParts = clean(latest)
         .split('.')
         .map((e) => int.tryParse(e) ?? 0)
         .toList();
-    final currentParts = current
+    final currentParts = clean(current)
         .split('.')
         .map((e) => int.tryParse(e) ?? 0)
         .toList();
@@ -75,17 +80,40 @@ class UpdateService {
     String url, {
     void Function(double)? onProgress,
   }) async {
-    if (kIsWeb) {
-      return;
-    }
+    if (kIsWeb) return;
 
     try {
-      await AppInstallerPlus().downloadAndInstallApk(
-        downloadFileUrl: url,
-        onProgress: (progress) {
-          if (onProgress != null) onProgress(progress);
-        },
+      final response = await http.Client().send(
+        http.Request('GET', Uri.parse(url)),
       );
+      final contentLength = response.contentLength ?? 0;
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/update.apk');
+
+      final sink = file.openWrite();
+      var received = 0;
+
+      await response.stream.listen((chunk) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (contentLength > 0 && onProgress != null) {
+          onProgress(received / contentLength);
+        }
+      }).asFuture();
+
+      await sink.close();
+
+      final status = await Permission.requestInstallPackages.request();
+
+      if (status.isGranted) {
+        await OpenFilex.open(file.path);
+      } else if (status.isPermanentlyDenied) {
+        openAppSettings();
+        debugPrint('Пользователь запретил установку. Открыты настройки.');
+      } else {
+        debugPrint('Разрешение на установку не выдано');
+      }
     } catch (e) {
       debugPrint('Ошибка обновления: $e');
     }
