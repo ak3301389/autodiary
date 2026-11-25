@@ -68,10 +68,20 @@ copy "build\app\outputs\flutter-apk\app-release.apk" "release\%apk_name%"
 echo APK готов: release\%apk_name%
 
 REM =========================================
-REM 2. ЗАЛИВКА APK НА GITHUB
+REM 2. ЗАЛИВКА КОДА И APK НА GITHUB
 REM =========================================
 echo.
-echo === 2/4. Заливка APK на GitHub ===
+echo === 2/4. Заливка кода и APK на GitHub ===
+
+git add .
+git commit -m "Сборка v%major%.%minor%.%patch%.%build_num%: %comment%"
+git push origin main
+
+gh release create v%major%.%minor%.%patch%.%build_num% ^
+  "release\%apk_name%" ^
+  --repo ak3301389/autodiary-releases ^
+  --title "v%major%.%minor%.%patch%.%build_num%" ^
+  --notes "%comment%"
 
 gh release create v%major%.%minor%.%patch%.%build_num% ^
   "release\%apk_name%" ^
