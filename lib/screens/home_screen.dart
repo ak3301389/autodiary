@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
@@ -15,10 +16,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _appVersion = '';
   @override
   void initState() {
     super.initState();
     _checkUpdate();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = 'v${info.version} (${info.buildNumber})';
+      });
+    }
   }
 
   Future<void> _checkUpdate() async {
@@ -70,7 +82,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои автомобили'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text('Мои автомобили'),
+            if (_appVersion.isNotEmpty)
+              Text(
+                _appVersion,
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.bar_chart),
