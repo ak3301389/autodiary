@@ -77,17 +77,19 @@ git add .
 git commit -m "Сборка v%major%.%minor%.%patch%.%build_num%: %comment%"
 git push origin main
 
-gh release create v%major%.%minor%.%patch%.%build_num% ^
-  "release\%apk_name%" ^
-  --repo ak3301389/autodiary-releases ^
-  --title "v%major%.%minor%.%patch%.%build_num%" ^
-  --notes "%comment%"
-
-gh release create v%major%.%minor%.%patch%.%build_num% ^
-  "release\%apk_name%" ^
-  --repo ak3301389/autodiary-releases ^
-  --title "v%major%.%minor%.%patch%.%build_num%" ^
-  --notes "%comment%"
+gh release view v%major%.%minor%.%patch%.%build_num% --repo ak3301389/autodiary-releases >nul 2>&1
+if errorlevel 1 (
+    gh release create v%major%.%minor%.%patch%.%build_num% ^
+      "release\%apk_name%" ^
+      --repo ak3301389/autodiary-releases ^
+      --title "v%major%.%minor%.%patch%.%build_num%" ^
+      --notes "%comment%"
+) else (
+    gh release upload v%major%.%minor%.%patch%.%build_num% ^
+      "release\%apk_name%" ^
+      --repo ak3301389/autodiary-releases ^
+      --clobber
+)
 
 if errorlevel 1 (
   echo.
