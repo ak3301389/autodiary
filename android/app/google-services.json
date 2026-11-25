@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "637423321774",
+    "project_id": "autodiary-1b8f7",
+    "storage_bucket": "autodiary-1b8f7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637423321774:android:4dc8bed198ff4de077233f",
+        "android_client_info": {
+          "package_name": "com.example.autodiary"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "637423321774-76l0djc5siu86f77mu6a9tuenorl5a0e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.autodiary",
+            "certificate_hash": "2ee3d606c8c69ffb412000cd5267f65a7698d3ed"
+          }
+        },
+        {
+          "client_id": "637423321774-6dlolseb68i07187ce5dvbo9b2q20pvu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCdh9utmDqVPCpUjCgZBI8JiEV8ACiKqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "637423321774-6dlolseb68i07187ce5dvbo9b2q20pvu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
