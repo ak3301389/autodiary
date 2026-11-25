@@ -1,7 +1,7 @@
 name: autodiary
 description: "АвтоДневник - учет расходов на автомобиль"
 publish_to: 'none'
-version: 1.1.1+15
+version: 1.1.1+16
 
 environment:
   sdk: ^3.13.0
@@ -17,7 +17,7 @@ dependencies:
   package_info_plus: ^8.0.0
   url_launcher: ^6.3.0
   http: ^1.2.1
-  open_filex: ^4.5.0
+  android_package_installer: ^0.0.3
   permission_handler: ^11.3.1
   path_provider: ^2.1.3
   

@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:android_package_installer/android_package_installer.dart';
 
 class UpdateService {
   // ЗАМЕНИ 'YOUR_GITHUB_USERNAME' на свой логин GitHub, а 'autodiary' на имя репозитория
@@ -107,10 +107,7 @@ class UpdateService {
       final status = await Permission.requestInstallPackages.request();
 
       if (status.isGranted) {
-        final result = await OpenFilex.open(file.path);
-        if (result.type != ResultType.done) {
-          debugPrint('Ошибка установки: ${result.message}');
-        }
+        await AndroidPackageInstaller.installApk(apkFilePath: file.path);
       } else if (status.isPermanentlyDenied) {
         openAppSettings();
         debugPrint('Пользователь запретил установку. Открыты настройки.');
