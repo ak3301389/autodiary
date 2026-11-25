@@ -107,7 +107,10 @@ class UpdateService {
       final status = await Permission.requestInstallPackages.request();
 
       if (status.isGranted) {
-        await OpenFilex.open(file.path);
+        final result = await OpenFilex.open(file.path);
+        if (result.type != ResultType.done) {
+          debugPrint('Ошибка установки: ${result.message}');
+        }
       } else if (status.isPermanentlyDenied) {
         openAppSettings();
         debugPrint('Пользователь запретил установку. Открыты настройки.');
