@@ -33,6 +33,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('О приложении'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('АвтоДневник'),
+            const SizedBox(height: 8),
+            Text('Версия: $_appVersion'),
+            const SizedBox(height: 8),
+            const Text('Учёт расходов и обслуживания автомобиля.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _checkUpdate() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
@@ -82,16 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text('Мои автомобили'),
-            if (_appVersion.isNotEmpty)
-              Text(
-                _appVersion,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-              ),
-          ],
+        title: const Text('Мои автомобили'),
+        leading: IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: _showAboutDialog,
         ),
         actions: [
           IconButton(
