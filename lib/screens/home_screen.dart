@@ -17,6 +17,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _appVersion = '';
+  double? _downloadProgress;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +32,96 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _appVersion = 'v${info.version} (${info.buildNumber})';
       });
+    }
+  }
+
+  Future<void> _checkUpdate({bool showNoUpdateMessage = false}) async {
+    if (!showNoUpdateMessage) {
+      await Future.delayed(const Duration(seconds: 2));
+    }
+    if (!mounted) return;
+
+    final updateInfo = await UpdateService.checkForUpdate();
+
+    if (!mounted) return;
+
+    if (updateInfo != null && updateInfo['hasUpdate'] == true) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Доступно обновление'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Новая версия: ${updateInfo['latestVersion']}'),
+              const SizedBox(height: 8),
+              const Text(
+                'Что нового:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(updateInfo['releaseNotes'] ?? ''),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Позже'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showDownloadDialog(updateInfo['downloadUrl']);
+              },
+              child: const Text('Обновить'),
+            ),
+          ],
+        ),
+      );
+    } else if (showNoUpdateMessage) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('У вас последняя версия')));
+    }
+  }
+
+  Future<void> _showDownloadDialog(String url) async {
+    setState(() => _downloadProgress = 0.0);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Загрузка обновления'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Пожалуйста, подождите...'),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(value: _downloadProgress),
+              const SizedBox(height: 8),
+              Text(
+                '${((_downloadProgress ?? 0) * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    await UpdateService.downloadAndInstall(
+      url,
+      onProgress: (progress) {
+        if (mounted) {
+          setState(() => _downloadProgress = progress);
+        }
+      },
+    );
+
+    if (mounted && Navigator.canPop(context)) {
+      Navigator.pop(context);
     }
   }
 
@@ -51,54 +143,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _checkUpdate(showNoUpdateMessage: true);
+            },
+            child: const Text('Проверить обновления'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Закрыть'),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _checkUpdate() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-
-    final updateInfo = await UpdateService.checkForUpdate();
-
-    if (mounted && updateInfo != null && updateInfo['hasUpdate'] == true) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Доступно обновление'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Новая версия: ${updateInfo['latestVersion']}'),
-              const SizedBox(height: 8),
-              const Text(
-                'Что нового:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(updateInfo['releaseNotes']),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Позже'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                UpdateService.openDownloadPage(updateInfo['downloadUrl']);
-              },
-              child: const Text('Скачать'),
-            ),
-          ],
-        ),
-      );
-    }
   }
 
   @override
@@ -141,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                     leading: CircleAvatar(
-                      backgroundColor: AppTheme.primary.withOpacity(0.1),
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
                       child: const Icon(
                         Icons.directions_car,
                         color: AppTheme.primary,
@@ -185,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(
               Icons.directions_car_outlined,
               size: 80,
-              color: AppTheme.textMuted.withOpacity(0.4),
+              color: AppTheme.textMuted.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -244,7 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 12,
+          ),
         ),
       ],
     );

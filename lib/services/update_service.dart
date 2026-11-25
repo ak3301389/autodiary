@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:app_installer_plus/app_installer_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 class UpdateService {
   // ЗАМЕНИ 'YOUR_GITHUB_USERNAME' на свой логин GitHub, а 'autodiary' на имя репозитория
@@ -46,10 +49,20 @@ class UpdateService {
   }
 
   static bool _isNewerVersion(String latest, String current) {
-    final latestParts = latest.split('.').map(int.parse).toList();
-    final currentParts = current.split('.').map(int.parse).toList();
+    final latestParts = latest
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList();
+    final currentParts = current
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList();
 
-    for (int i = 0; i < 3; i++) {
+    final maxLength = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
+
+    for (int i = 0; i < maxLength; i++) {
       final l = latestParts.length > i ? latestParts[i] : 0;
       final c = currentParts.length > i ? currentParts[i] : 0;
       if (l > c) return true;
@@ -58,10 +71,23 @@ class UpdateService {
     return false;
   }
 
-  static Future<void> openDownloadPage(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  static Future<void> downloadAndInstall(
+    String url, {
+    void Function(double)? onProgress,
+  }) async {
+    if (kIsWeb) {
+      return;
+    }
+
+    try {
+      await AppInstallerPlus().downloadAndInstallApk(
+        downloadFileUrl: url,
+        onProgress: (progress) {
+          if (onProgress != null) onProgress(progress);
+        },
+      );
+    } catch (e) {
+      debugPrint('Ошибка обновления: $e');
     }
   }
 }
