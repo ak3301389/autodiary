@@ -88,7 +88,8 @@ class UpdateService {
       );
       final contentLength = response.contentLength ?? 0;
 
-      final dir = await getTemporaryDirectory();
+      final dir = await getExternalStorageDirectory();
+      if (dir == null) throw Exception('Не удалось получить папку');
       final file = File('${dir.path}/update.apk');
 
       final sink = file.openWrite();
