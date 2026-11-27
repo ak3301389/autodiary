@@ -12,7 +12,8 @@ class UpdateService {
   static Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version; // например, "1.0.0"
+      final currentVersion =
+          '${packageInfo.version}.${packageInfo.buildNumber}';
 
       final response = await http.get(
         Uri.parse(
