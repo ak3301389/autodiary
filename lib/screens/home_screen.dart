@@ -71,9 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _showDownloadDialog(updateInfo['downloadUrl']);
+                UpdateService.openDownloadPage(updateInfo['downloadUrl']);
               },
-              child: const Text('Обновить'),
+              child: const Text('Скачать'),
             ),
           ],
         ),
@@ -82,46 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('У вас последняя версия')));
-    }
-  }
-
-  Future<void> _showDownloadDialog(String url) async {
-    setState(() => _downloadProgress = 0.0);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Загрузка обновления'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Пожалуйста, подождите...'),
-              const SizedBox(height: 16),
-              LinearProgressIndicator(value: _downloadProgress),
-              const SizedBox(height: 8),
-              Text(
-                '${((_downloadProgress ?? 0) * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    await UpdateService.downloadAndInstall(
-      url,
-      onProgress: (progress) {
-        if (mounted) {
-          setState(() => _downloadProgress = progress);
-        }
-      },
-    );
-
-    if (mounted && Navigator.canPop(context)) {
-      Navigator.pop(context);
     }
   }
 

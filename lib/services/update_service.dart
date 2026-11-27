@@ -1,12 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_android_package_installer/flutter_android_package_installer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
   // ЗАМЕНИ 'YOUR_GITHUB_USERNAME' на свой логин GitHub, а 'autodiary' на имя репозитория
@@ -76,47 +72,10 @@ class UpdateService {
     return false;
   }
 
-  static Future<void> downloadAndInstall(
-    String url, {
-    void Function(double)? onProgress,
-  }) async {
-    if (kIsWeb) return;
-
-    try {
-      final response = await http.Client().send(
-        http.Request('GET', Uri.parse(url)),
-      );
-      final contentLength = response.contentLength ?? 0;
-
-      final dir = await getExternalStorageDirectory();
-      if (dir == null) throw Exception('Не удалось получить папку');
-      final file = File('${dir.path}/update.apk');
-
-      final sink = file.openWrite();
-      var received = 0;
-
-      await response.stream.listen((chunk) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0 && onProgress != null) {
-          onProgress(received / contentLength);
-        }
-      }).asFuture();
-
-      await sink.close();
-
-      final status = await Permission.requestInstallPackages.request();
-
-      if (status.isGranted) {
-        await AndroidPackageInstaller.installApk(apkFilePath: file.path);
-      } else if (status.isPermanentlyDenied) {
-        openAppSettings();
-        debugPrint('Пользователь запретил установку. Открыты настройки.');
-      } else {
-        debugPrint('Разрешение на установку не выдано');
-      }
-    } catch (e) {
-      debugPrint('Ошибка обновления: $e');
+  static Future<void> openDownloadPage(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 }
