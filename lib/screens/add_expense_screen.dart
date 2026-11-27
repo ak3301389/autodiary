@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -55,7 +53,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   bool _isScanning = false;
   String? _receiptImagePath;
-  Uint8List? _receiptImageBytes;
 
   @override
   void initState() {
@@ -287,7 +284,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final bytes = await image.readAsBytes();
     setState(() {
       _receiptImagePath = null;
-      _receiptImageBytes = bytes;
     });
 
     final url = await _ocrService.uploadToCloudinary(bytes);

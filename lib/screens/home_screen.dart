@@ -17,7 +17,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _appVersion = '';
-  double? _downloadProgress;
 
   @override
   void initState() {
