@@ -1,0 +1,13 @@
+.dart_tool/
+.firebase/
+.idea/
+build/
+release/
+android/.gradle/
+android/.kotlin/
+android/gradle/
+android/key.properties
+android/upload-keystore.jks
+pubspec.lock
+project_dump.txt
+*.apk

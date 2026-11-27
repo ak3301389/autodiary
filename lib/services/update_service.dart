@@ -9,11 +9,18 @@ class UpdateService {
   static const String repoOwner = 'ak3301389';
   static const String repoName = 'autodiary-releases';
 
+  static Future<void> openDownloadPage(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   static Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = '${packageInfo.version}.${packageInfo.buildNumber}'
-          .replaceAll(RegExp(r'\.+$'), '');
+      final currentVersion =
+          '${packageInfo.version}.${packageInfo.buildNumber.isEmpty ? "0" : packageInfo.buildNumber}';
 
       final response = await http.get(
         Uri.parse(
@@ -47,38 +54,25 @@ class UpdateService {
   }
 
   static bool _isNewerVersion(String latest, String current) {
-    String clean(String v) {
-      return v.replaceAll(RegExp(r'[^0-9.]'), '').trim();
+    List<int> parse(String v) {
+      return v
+          .replaceAll(RegExp(r'[^0-9.]'), '')
+          .split('.')
+          .map((e) => int.tryParse(e) ?? 0)
+          .toList();
     }
 
-    final latestParts = clean(latest)
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
-    final currentParts = clean(current)
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
+    final l = parse(latest);
+    final c = parse(current);
 
-    final maxLength = latestParts.length > currentParts.length
-        ? latestParts.length
-        : currentParts.length;
+    final maxLength = l.length > c.length ? l.length : c.length;
 
     for (int i = 0; i < maxLength; i++) {
-      final l = latestParts.length > i ? latestParts[i] : 0;
-      final c = currentParts.length > i ? currentParts[i] : 0;
-      if (l > c) return true;
-      if (l < c) return false;
+      final lVal = l.length > i ? l[i] : 0;
+      final cVal = c.length > i ? c[i] : 0;
+      if (lVal > cVal) return true;
+      if (lVal < cVal) return false;
     }
     return false;
-  }
-
-  static Future<void> openDownloadPage(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      print('Ошибка при открытии ссылки: $e');
-    }
   }
 }
