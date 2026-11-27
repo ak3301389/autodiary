@@ -22,7 +22,8 @@ echo 1 - Исправление (Patch)
 echo 2 - Новая функция (Minor)
 echo 3 - Крупное изменение (Major)
 echo 4 - Просто пересборка (Build)
-set /p version_type="Тип (1-4): "
+set "version_type=%~1"
+if not defined version_type set /p version_type="Тип (1-4): "
 
 if "%version_type%"=="1" (
   set /a patch=patch+1
@@ -43,7 +44,8 @@ if "%version_type%"=="4" (
   set /a build_num=old_build+1
 )
 
-set /p comment="Комментарий: "
+set "comment=%~2"
+if not defined comment set /p comment="Комментарий: "
 
 powershell -Command "(Get-Content pubspec.yaml) -replace 'version: .*', 'version: %major%.%minor%.%patch%+%build_num%' | Set-Content pubspec.yaml"
 

@@ -18,10 +18,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _appVersion = '';
 
+  // Обновления
+  final UpdateService _updateService = UpdateService();
+  UpdateInfo? _pendingUpdate;
+  bool _downloading = false;
+  double _progress = 0;
+
   @override
   void initState() {
     super.initState();
-    _checkUpdate();
+    _checkForUpdate();
     _loadVersion();
   }
 
@@ -34,54 +40,178 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _checkUpdate({bool showNoUpdateMessage = false}) async {
-    if (!showNoUpdateMessage) {
-      await Future.delayed(const Duration(seconds: 2));
+  Future<void> _checkForUpdate({bool manual = false}) async {
+    // Антифлуд: автоматическая проверка не чаще 1 раза в 24 часа.
+    if (!manual) {
+      final should = await _updateService.shouldCheck();
+      if (!should) return;
     }
+
+    // Фиксируем дату проверки до сетевого запроса (как в референсе).
+    await _updateService.markChecked();
+
+    final info = await _updateService.checkLatest();
+    if (info == null) {
+      if (manual && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось проверить обновления')),
+        );
+      }
+      return;
+    }
+
+    // Пользователь уже откладывал эту версию? (ручную проверку не блокируем)
+    if (!manual) {
+      final skipped = await _updateService.isSkipped(info.version);
+      if (skipped) return;
+    }
+
+    // Сравниваем с текущей версией приложения: "<version>.<buildNumber>".
+    final pkg = await PackageInfo.fromPlatform();
+    final current = '${pkg.version}.${pkg.buildNumber}';
+
+    if (!_updateService.isNewer(info.version, current)) {
+      if (manual && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('У вас последняя версия')));
+      }
+      return;
+    }
+
     if (!mounted) return;
+    setState(() => _pendingUpdate = info);
+  }
 
-    final updateInfo = await UpdateService.checkForUpdate();
+  Future<void> _downloadAndInstall() async {
+    final info = _pendingUpdate;
+    if (info == null) return;
 
+    setState(() {
+      _downloading = true;
+      _progress = 0;
+    });
+
+    try {
+      await _updateService.downloadAndInstall(
+        info,
+        onProgress: (p) {
+          if (!mounted) return;
+          setState(() => _progress = p);
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _progress = 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _skipUpdate() async {
+    final info = _pendingUpdate;
+    if (info == null) return;
+    await _updateService.skipVersion(info.version);
     if (!mounted) return;
+    setState(() => _pendingUpdate = null);
+  }
 
-    if (updateInfo != null && updateInfo['hasUpdate'] == true) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Доступно обновление'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Новая версия: ${updateInfo['latestVersion']}'),
+  Widget _buildUpdateBanner(BuildContext context) {
+    final info = _pendingUpdate!;
+
+    return Material(
+      color: AppTheme.primary,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.system_update_alt,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Доступно обновление v${info.version}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: _downloading ? null : _skipUpdate,
+                  tooltip: 'Позже',
+                ),
+              ],
+            ),
+            if (info.notes.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const Text(
-                'Что нового:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  info.notes,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ),
-              Text(updateInfo['releaseNotes'] ?? ''),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Позже'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                UpdateService.openDownloadPage(updateInfo['downloadUrl']);
-              },
-              child: const Text('Скачать'),
-            ),
+            if (_downloading) ...[
+              const SizedBox(height: 4),
+              LinearProgressIndicator(
+                value: _progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Скачивание... ${(_progress * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ] else
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _downloadAndInstall,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  child: const Text(
+                    'Обновить',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 4),
           ],
         ),
-      );
-    } else if (showNoUpdateMessage) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('У вас последняя версия')));
-    }
+      ),
+    );
   }
 
   void _showAboutDialog() {
@@ -104,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _checkUpdate(showNoUpdateMessage: true);
+              _checkForUpdate(manual: true);
             },
             child: const Text('Проверить обновления'),
           ),
@@ -142,47 +272,56 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: data.carsLoading
-          ? const Center(child: CircularProgressIndicator())
-          : data.cars.isEmpty
-          ? _emptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: data.cars.length + 1,
-              itemBuilder: (context, i) {
-                if (i == 0) return _buildHeader(data);
-                final car = data.cars[i - 1];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                      child: const Icon(
-                        Icons.directions_car,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    title: Text(
-                      car.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${car.plate} • ${car.mileage} км • ${car.year} г.',
-                      style: const TextStyle(color: AppTheme.textMuted),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: AppTheme.textMuted,
-                    ),
-                    onTap: () => context.push('/car/${car.id}'),
+      body: Column(
+        children: [
+          if (_pendingUpdate != null) _buildUpdateBanner(context),
+          Expanded(
+            child: data.carsLoading
+                ? const Center(child: CircularProgressIndicator())
+                : data.cars.isEmpty
+                ? _emptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: data.cars.length + 1,
+                    itemBuilder: (context, i) {
+                      if (i == 0) return _buildHeader(data);
+                      final car = data.cars[i - 1];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            child: const Icon(
+                              Icons.directions_car,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                          title: Text(
+                            car.title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${car.plate} • ${car.mileage} км • ${car.year} г.',
+                            style: const TextStyle(color: AppTheme.textMuted),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: AppTheme.textMuted,
+                          ),
+                          onTap: () => context.push('/car/${car.id}'),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/car/add'),
         icon: const Icon(Icons.add),
