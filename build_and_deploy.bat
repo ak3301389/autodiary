@@ -119,7 +119,7 @@ REM 4. ПУБЛИКАЦИЯ WEB
 REM =========================================
 echo.
 echo === 4/4. Публикация на Firebase ===
-call firebase deploy --only hosting --project autodiary-1b8f7
+call npx firebase-tools deploy --only hosting --project autodiary-1b8f7
 
 if errorlevel 1 (
   echo.
